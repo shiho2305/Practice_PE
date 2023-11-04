@@ -3,25 +3,49 @@ import Image from '../models/image.model.js';
 import Category from '../models/category.model.js';
 
 const productRepository = {
-    create: async ({name, price, discountPercentage, images=[], quantity, category}) => {
-            return await Category.findOne({name: category}).then(docCategory => {
-                Product.create({name, price, discountPercentage, quantity, category: docCategory._id}).then(docProduct => {
-                    images.map(({url, caption, path}) => {
-                        Image.create({url, caption, path, createdAt: Date.now()}).then(docImage => {
-                            return Product.findByIdAndUpdate(docProduct._id, {
-                                $push: {
-                                    images: {
-                                        _id: docImage._id,
-                                        url: url,
-                                        caption: caption,
-                                    }
-                                }})
-                        })
-                    })
-                });
-            })
-    },
-    
+  create: async ({ name, price, images = [], category }) => {
+    const docCategory = await Category.findOne({ name: category })
+      .then((docCategory) => {
+        if (!docCategory) {
+          throw new Error("Category doesn' exist");
+        }
+        return docCategory;
+      })
+      .catch((err) => {
+        console.log(err.toString());
+      });
+    const docProduct = await Product.create({
+      name,
+      price,
+      category: docCategory._id,
+    })
+      .then((docProduct) => {
+        if (!docProduct) {
+          throw new Error("Creat product failed");
+        }
+        return docProduct;
+      })
+      .catch((err) => {
+        console.log(err.toString());
+      });
+    images.map(({ url, caption, path }) => {
+      Image.create({ url, caption, path, createdAt: Date.now() }).then(
+        (docImage) => {
+          console.log(docProduct);
+          return Product.findByIdAndUpdate(docProduct._id, {
+            $push: {
+              images: {
+                _id: docImage._id,
+                url: url,
+                caption: caption,
+              },
+            },
+          });
+        }
+      );
+    });
+  },
+
     getAll: async () => {
         const product = await Product.find().populate('category');
         return product
@@ -46,6 +70,7 @@ const productRepository = {
           throw new Error('Unable to delete the product by ID: ' + error.message);
         }
     }
+    
 
 };
 
